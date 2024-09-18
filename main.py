@@ -4,11 +4,13 @@ import threading
 import platform
 from utils.logger import Logger  # 引入刚刚创建的日志工具类
 
+
 class SerialDebugger:
     def __init__(self):
         # 初始化串口调试助手
         self.serial_port = None
         self.is_running = False
+        self.com14_port = None  # 用于存储 COM14 端口
         # 设置日志
         Logger.setup_logger()
 
@@ -41,12 +43,24 @@ class SerialDebugger:
         except Exception as e:
             Logger.error(f"打开串口失败: {e}")
 
-    def close_port(self):
+    def open_com14_port(self, baudrate=9600):
+        """打开 COM14 端口"""
+        try:
+            self.com14_port = serial.Serial("COM14", baudrate, timeout=1)
+            Logger.info("已打开COM14端口用于数据发送。")
+        except Exception as e:
+            Logger.error(f"打开 COM14 端口失败: {e}")
+
+    def close_ports(self):
         """关闭串口"""
         if self.serial_port and self.serial_port.is_open:
             self.is_running = False
             self.serial_port.close()
             Logger.info("已关闭串口。")
+
+        if self.com14_port and self.com14_port.is_open:
+            self.com14_port.close()
+            Logger.info("已关闭 COM14 端口。")
 
     def send_data(self, data):
         """发送十六进制数据到串口"""
@@ -61,8 +75,19 @@ class SerialDebugger:
         else:
             Logger.warning("串口未打开，无法发送数据。")
 
+    def send_to_com14(self, data):
+        """将二进制数据发送到 COM14 端口"""
+        if self.com14_port and self.com14_port.is_open:
+            try:
+                self.com14_port.write(data)
+                Logger.info(f"发送到 COM14 的数据: {data.hex(' ')}")
+            except Exception as e:
+                Logger.error(f"发送数据到 COM14 时出错: {e}")
+        else:
+            Logger.warning("COM14 未打开，无法发送数据。")
+
     def read_from_port(self):
-        """从串口读取数据，累计到8个字节后格式化输出"""
+        """从串口读取数据，累计到8个字节后格式化输出并发送到 COM14"""
         buffer = bytearray()  # 创建缓冲区来存储数据
         while self.is_running:
             if self.serial_port.in_waiting > 0:
@@ -71,10 +96,11 @@ class SerialDebugger:
                     data = self.serial_port.read(self.serial_port.in_waiting)
                     buffer.extend(data)
 
-                    # 如果缓冲区长度达到了8个字节，输出一行
+                    # 如果缓冲区长度达到了8个字节，输出一行并发送到 COM14
                     while len(buffer) >= 8:
                         hex_data = ' '.join(f'{byte:02X}' for byte in buffer[:8])
                         Logger.info(f"接收 (HEX): {hex_data}")
+                        self.send_to_com14(buffer[:8])  # 将 8 字节数据发送到 COM14
                         buffer = buffer[8:]  # 移除已处理的数据
                 except Exception as e:
                     Logger.error(f"读取串口数据时出错: {e}")
@@ -112,11 +138,12 @@ class SerialDebugger:
 
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
         self.open_port(port_name, baudrate)
+        self.open_com14_port(baudrate)  # 打开 COM14 端口
 
         while True:
             cmd = input("请输入要发送的16进制数据（输入 'q' 退出）：\n")
             if cmd.lower() == 'q':
-                self.close_port()
+                self.close_ports()
                 break
             else:
                 self.send_data(cmd)
