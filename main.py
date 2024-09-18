@@ -2,57 +2,82 @@ import serial
 import serial.tools.list_ports
 import threading
 import platform
+from utils.logger import Logger  # 引入刚刚创建的日志工具类
 
 class SerialDebugger:
     def __init__(self):
         # 初始化串口调试助手
         self.serial_port = None
         self.is_running = False
+        # 设置日志
+        Logger.setup_logger()
 
     def list_ports(self):
-        """列出可用的串口"""
+        """列出可用的串口，返回端口列表"""
         ports = serial.tools.list_ports.comports()
         if not ports:
-            print("未找到可用的串口设备。")
+            Logger.warning("未找到可用的串口设备。")
         else:
-            print("可用串口:")
+            Logger.info("可用串口:")
             for port in ports:
-                print(f"{port.device}: {port.description}")
+                Logger.info(f"{port.device}: {port.description}")
         return [port.device for port in ports]
+
+    def get_min_port(self, ports):
+        """获取编号最小的串口"""
+        if platform.system() == "Windows":
+            sorted_ports = sorted(ports, key=lambda x: int(x[3:]))
+        else:
+            sorted_ports = sorted(ports, key=lambda x: int(''.join(filter(str.isdigit, x))))
+        return sorted_ports[0] if sorted_ports else None
 
     def open_port(self, port_name, baudrate=9600):
         """打开串口"""
         try:
             self.serial_port = serial.Serial(port_name, baudrate, timeout=1)
             self.is_running = True
-            print(f"已打开端口 {port_name}，波特率为 {baudrate}。")
-            # 开启一个新线程来监听串口数据
+            Logger.info(f"已打开端口 {port_name}，波特率为 {baudrate}。")
             threading.Thread(target=self.read_from_port).start()
         except Exception as e:
-            print(f"打开串口失败: {e}")
+            Logger.error(f"打开串口失败: {e}")
 
     def close_port(self):
         """关闭串口"""
         if self.serial_port and self.serial_port.is_open:
             self.is_running = False
             self.serial_port.close()
-            print("已关闭串口。")
+            Logger.info("已关闭串口。")
 
     def send_data(self, data):
-        """发送数据到串口"""
+        """发送十六进制数据到串口"""
         if self.serial_port and self.serial_port.is_open:
-            self.serial_port.write(data.encode())
-            print(f"发送: {data}")
+            try:
+                # 将HEX字符串转换为字节数据并发送
+                hex_data = bytes.fromhex(data)
+                self.serial_port.write(hex_data)
+                Logger.info(f"发送 (HEX): {data}")
+            except ValueError:
+                Logger.error("无效的HEX格式输入，请确保HEX输入有效。")
         else:
-            print("串口未打开，无法发送数据。")
+            Logger.warning("串口未打开，无法发送数据。")
 
     def read_from_port(self):
-        """从串口读取数据"""
+        """从串口读取数据，累计到8个字节后格式化输出"""
+        buffer = bytearray()  # 创建缓冲区来存储数据
         while self.is_running:
             if self.serial_port.in_waiting > 0:
-                data = self.serial_port.readline().decode('utf-8').strip()
-                if data:
-                    print(f"接收: {data}")
+                try:
+                    # 每次读取所有可用数据
+                    data = self.serial_port.read(self.serial_port.in_waiting)
+                    buffer.extend(data)
+
+                    # 如果缓冲区长度达到了8个字节，输出一行
+                    while len(buffer) >= 8:
+                        hex_data = ' '.join(f'{byte:02X}' for byte in buffer[:8])
+                        Logger.info(f"接收 (HEX): {hex_data}")
+                        buffer = buffer[8:]  # 移除已处理的数据
+                except Exception as e:
+                    Logger.error(f"读取串口数据时出错: {e}")
 
     def get_default_port_format(self):
         """根据操作系统返回默认串口格式"""
@@ -68,27 +93,29 @@ class SerialDebugger:
 
     def start(self):
         """启动串口调试助手"""
-        # 列出所有可用的串口
         available_ports = self.list_ports()
         if not available_ports:
-            print("未发现可用的串口。")
+            Logger.warning("未发现可用的串口。")
             return
 
-        # 获取平台相关的串口格式提示
-        default_port_format = self.get_default_port_format()
-        print(f"您的系统是 {platform.system()}，默认的串口格式为: {default_port_format}")
+        min_port = self.get_min_port(available_ports)
+        if min_port:
+            Logger.info(f"最小编号的串口是: {min_port}")
+        else:
+            Logger.warning("未找到可用的串口。")
+            return
 
-        # 选择要打开的串口和波特率
-        port_name = input(f"请输入要打开的端口（例如 {default_port_format}）：")
+        port_name = input(f"请输入要打开的端口（按回车默认打开最小编号的端口 {min_port}）：")
+        if not port_name:
+            port_name = min_port
+            Logger.info(f"未输入端口，默认打开编号最小的端口: {port_name}")
+
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-
-        # 打开指定的串口
         self.open_port(port_name, baudrate)
 
-        # 循环等待用户输入要发送的数据
         while True:
-            cmd = input("请输入要发送的数据（输入 'exit' 退出）：")
-            if cmd.lower() == 'exit':
+            cmd = input("请输入要发送的16进制数据（输入 'q' 退出）：\n")
+            if cmd.lower() == 'q':
                 self.close_port()
                 break
             else:
@@ -96,6 +123,5 @@ class SerialDebugger:
 
 
 if __name__ == "__main__":
-    # 实例化并启动串口调试助手
     debugger = SerialDebugger()
     debugger.start()
