@@ -84,7 +84,7 @@ class SerialDebugger:
 
                     while len(buffer) >= 8:
                         hex_data = ' '.join(f'{byte:02X}' for byte in buffer[:8])
-                        Logger.info(f"接收 (HEX): {hex_data}")
+                        Logger.info(f"接收 : {hex_data}")
                         self.send_to_com14(buffer[:8])
                         buffer = buffer[8:]
                 except Exception as e:
