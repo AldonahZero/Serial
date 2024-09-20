@@ -111,13 +111,13 @@ class SerialDebugger:
         self.open_port(port_name, baudrate)
         # self.open_com14_port(baudrate)
         #
-        # while True:
-        #     cmd = input("请输入要发送的16进制数据（输入 'q' 退出）：\n")
-        #     if cmd.lower() == 'q':
-        #         self.close_ports()
-        #         break
-        #     else:
-        #         self.send_data(cmd)
+        while True:
+            cmd = input("如果需要发送数据\n请输入要发送的16进制数据（输入 'q' 退出）：\n")
+            if cmd.lower() == 'q':
+                self.close_ports()
+                break
+            else:
+                self.send_data(cmd)
 
 if __name__ == "__main__":
     debugger = SerialDebugger()
