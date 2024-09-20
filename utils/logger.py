@@ -4,7 +4,7 @@ import os
 class SendLogFilter(logging.Filter):
     """自定义过滤器，只允许发送数据的日志通过"""
     def filter(self, record):
-        return "发送" in record.getMessage()
+        return "接收" in record.getMessage()
 
 class Logger:
     @staticmethod
