@@ -103,19 +103,19 @@ class SerialDebugger:
             time.sleep(1)  # 每秒发送一组数据
 
     def start(self):
-        # available_ports = self.list_ports()
-        # if not available_ports:
-        #     Logger.warning("未发现可用的串口。")
-        #     return
-        #
-        # if "COM14" not in available_ports:
-        #     Logger.error("未找到COM14端口，无法启动。")
-        #     return
+        available_ports = self.list_ports()
+        if not available_ports:
+            Logger.warning("未发现可用的串口。")
+            return
+
+        if "COM14" not in available_ports:
+            Logger.error("未找到COM14端口，无法启动。")
+            return
 
         # 默认打开COM14端口
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-        # self.open_port("COM14", baudrate)
-        # self.open_com14_port(baudrate)
+        self.open_port("COM14", baudrate)
+        self.open_com14_port(baudrate)
 
         # 加载数据
         data_file_path = "./data/data 01.txt"
