@@ -1,7 +1,10 @@
+import re
+
 import serial
 import serial.tools.list_ports
 import threading
 import platform
+import time
 from utils.logger import Logger  # 引入刚刚创建的日志工具类
 
 
@@ -10,6 +13,7 @@ class SerialDebugger:
         self.serial_port = None
         self.is_running = False
         self.com14_port = None
+        self.data_buffer = []
         Logger.setup_logger()
 
     def list_ports(self):
@@ -66,14 +70,6 @@ class SerialDebugger:
             except Exception as e:
                 Logger.error(f"发送数据到COM14时出错: {e}")
 
-    def send_to_com14(self, data):
-        if self.com14_port and self.com14_port.is_open:
-            try:
-                self.com14_port.write(data)
-                Logger.info(f"已向COM14发送数据: {data}")
-            except Exception as e:
-                Logger.error(f"发送数据到 COM14 时出错: {e}")
-
     def read_from_port(self):
         buffer = bytearray()
         while self.is_running:
@@ -90,20 +86,43 @@ class SerialDebugger:
                 except Exception as e:
                     Logger.error(f"读取串口数据时出错: {e}")
 
-    def start(self):
-        available_ports = self.list_ports()
-        if not available_ports:
-            Logger.warning("未发现可用的串口。")
-            return
+    def load_data_from_file(self, filepath):
+        with open(filepath, "r", encoding="utf-8") as file:
+            content = file.read()
+            # 移除换行符
+            content = content.replace("\n", " ").replace("\r", "")
+            # 使用正则表达式来匹配以A9 9A开头，0D 0A结尾的内容
+            matches = re.findall(r"(A9 9A.*?0D 0A)", content, re.DOTALL)
+            self.data_buffer = matches
 
-        if "COM14" not in available_ports:
-            Logger.error("未找到COM14端口，无法启动。")
-            return
+    def send_data_from_buffer(self):
+        for data in self.data_buffer:
+            data = data.replace(" ", "")
+            print(data)
+            self.send_data(data)
+            time.sleep(1)  # 每秒发送一组数据
+
+    def start(self):
+        # available_ports = self.list_ports()
+        # if not available_ports:
+        #     Logger.warning("未发现可用的串口。")
+        #     return
+        #
+        # if "COM14" not in available_ports:
+        #     Logger.error("未找到COM14端口，无法启动。")
+        #     return
 
         # 默认打开COM14端口
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-        self.open_port("COM14", baudrate)
-        self.open_com14_port(baudrate)
+        # self.open_port("COM14", baudrate)
+        # self.open_com14_port(baudrate)
+
+        # 加载数据
+        data_file_path = "./data/data 01.txt"
+        self.load_data_from_file(data_file_path)
+
+        # 开始每秒发送一组数据
+        self.send_data_from_buffer()
 
         while True:
             cmd = input("如果需要发送数据\n请输入要发送的16进制数据（输入 'q' 退出）：\n")
@@ -117,3 +136,4 @@ class SerialDebugger:
 if __name__ == "__main__":
     debugger = SerialDebugger()
     debugger.start()
+
