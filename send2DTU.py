@@ -21,14 +21,7 @@ class SerialDebugger:
                 Logger.info(f"{port.device}: {port.description}")
         return [port.device for port in ports]
 
-    def get_min_port(self, ports):
-        if platform.system() == "Windows":
-            sorted_ports = sorted(ports, key=lambda x: int(x[3:]))
-        else:
-            sorted_ports = sorted(ports, key=lambda x: int(''.join(filter(str.isdigit, x))))
-        return sorted_ports[0] if sorted_ports else None
-
-    def open_port(self, port_name, baudrate=9600):
+    def open_port(self, port_name="COM14", baudrate=9600):
         try:
             self.serial_port = serial.Serial(port_name, baudrate, timeout=1)
             self.is_running = True
@@ -103,23 +96,14 @@ class SerialDebugger:
             Logger.warning("未发现可用的串口。")
             return
 
-        min_port = self.get_min_port(available_ports)
-        if min_port:
-            Logger.info(f"最小编号的串口是: {min_port}")
-        else:
-            Logger.warning("未找到可用的串口。")
+        if "COM14" not in available_ports:
+            Logger.error("未找到COM14端口，无法启动。")
             return
 
-        port_name = input(f"请输入要打开的端口（按回车默认打开最小编号的端口 {min_port}）：")
-        if not port_name:
-            port_name = min_port
-
+        # 默认打开COM14端口
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-        self.open_port(port_name, baudrate)
-        self.open_com14_port(baudrate)  # 确保在启动时打开COM14端口
-
-        # 发送一条任意消息到COM14
-        self.send_to_com14(b"任意消息")
+        self.open_port("COM14", baudrate)
+        self.open_com14_port(baudrate)
 
         while True:
             cmd = input("如果需要发送数据\n请输入要发送的16进制数据（输入 'q' 退出）：\n")
