@@ -12,7 +12,7 @@ class SerialDebugger:
     def __init__(self):
         self.serial_port = None
         self.is_running = False
-        self.com14_port = None
+        self.COM4_port = None
         self.data_buffer = []
         Logger.setup_logger()
 
@@ -25,7 +25,7 @@ class SerialDebugger:
                 Logger.info(f"{port.device}: {port.description}")
         return [port.device for port in ports]
 
-    def open_port(self, port_name="COM14", baudrate=9600):
+    def open_port(self, port_name="COM4", baudrate=9600):
         try:
             self.serial_port = serial.Serial(port_name, baudrate, timeout=1)
             self.is_running = True
@@ -34,12 +34,12 @@ class SerialDebugger:
         except Exception as e:
             Logger.error(f"打开串口失败: {e}")
 
-    def open_com14_port(self, baudrate=9600):
+    def open_COM4_port(self, baudrate=9600):
         try:
-            self.com14_port = serial.Serial("COM14", baudrate, timeout=1)
-            Logger.info("已打开COM14端口用于数据发送。")
+            self.COM4_port = serial.Serial("COM4", baudrate, timeout=1)
+            Logger.info("已打开COM4端口用于数据发送。")
         except Exception as e:
-            Logger.error(f"打开 COM14 端口失败: {e}")
+            Logger.error(f"打开 COM4 端口失败: {e}")
 
     def close_ports(self):
         if self.serial_port and self.serial_port.is_open:
@@ -47,9 +47,9 @@ class SerialDebugger:
             self.serial_port.close()
             Logger.info("已关闭串口。")
 
-        if self.com14_port and self.com14_port.is_open:
-            self.com14_port.close()
-            Logger.info("已关闭 COM14 端口。")
+        if self.COM4_port and self.COM4_port.is_open:
+            self.COM4_port.close()
+            Logger.info("已关闭 COM4 端口。")
 
     def send_data(self, data):
         if self.serial_port and self.serial_port.is_open:
@@ -62,13 +62,13 @@ class SerialDebugger:
         else:
             Logger.warning("串口未打开，无法发送数据。")
 
-        # 发送数据到COM14
-        if self.com14_port and self.com14_port.is_open:
+        # 发送数据到COM4
+        if self.COM4_port and self.COM4_port.is_open:
             try:
-                self.com14_port.write(data.encode())  # 发送数据到COM14端口
-                Logger.info(f"已向COM14发送数据: {data}")
+                self.COM4_port.write(data.encode())  # 发送数据到COM4端口
+                Logger.info(f"已向COM4发送数据: {data}")
             except Exception as e:
-                Logger.error(f"发送数据到COM14时出错: {e}")
+                Logger.error(f"发送数据到COM4时出错: {e}")
 
     def read_from_port(self):
         buffer = bytearray()
@@ -81,7 +81,7 @@ class SerialDebugger:
                     while len(buffer) >= 8:
                         hex_data = ' '.join(f'{byte:02X}' for byte in buffer[:8])
                         Logger.info(f"接收 : {hex_data}")
-                        self.send_to_com14(buffer[:8])
+                        self.send_to_COM4(buffer[:8])
                         buffer = buffer[8:]
                 except Exception as e:
                     Logger.error(f"读取串口数据时出错: {e}")
@@ -108,14 +108,14 @@ class SerialDebugger:
             Logger.warning("未发现可用的串口。")
             return
 
-        if "COM14" not in available_ports:
-            Logger.error("未找到COM14端口，无法启动。")
+        if "COM4" not in available_ports:
+            Logger.error("未找到COM4端口，无法启动。")
             return
 
-        # 默认打开COM14端口
+        # 默认打开COM4端口
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-        self.open_port("COM14", baudrate)
-        self.open_com14_port(baudrate)
+        # self.open_port("COM4", baudrate)
+        self.open_COM4_port(baudrate)
 
         # 加载数据
         data_file_path = "./data/data 01.txt"
