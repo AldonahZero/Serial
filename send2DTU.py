@@ -54,8 +54,8 @@ class SerialDebugger:
     def send_data(self, data):
         if self.serial_port and self.serial_port.is_open:
             try:
-                hex_data = bytes.fromhex(data)
-                self.serial_port.write(hex_data)
+                # hex_data = bytes.fromhex(data)
+                self.serial_port.write(data)
                 Logger.info(f"发送 (HEX): {data}")
             except ValueError:
                 Logger.error("无效的HEX格式输入，请确保HEX输入有效。")
@@ -97,9 +97,9 @@ class SerialDebugger:
 
     def send_data_from_buffer(self):
         for data in self.data_buffer:
-            data = data.replace(" ", "")
             print(data)
             hex_data = bytes.fromhex(data)
+            print(hex_data)
             self.send_data(hex_data)
             time.sleep(1)  # 每秒发送一组数据
 
@@ -115,7 +115,7 @@ class SerialDebugger:
 
         # 默认打开COM4端口
         baudrate = int(input("请输入波特率（默认 9600）：") or 9600)
-        # self.open_port("COM4", baudrate)
+        self.open_port("COM4", baudrate)
         self.open_COM4_port(baudrate)
 
         # 加载数据
