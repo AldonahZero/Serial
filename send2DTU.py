@@ -99,7 +99,8 @@ class SerialDebugger:
         for data in self.data_buffer:
             data = data.replace(" ", "")
             print(data)
-            self.send_data(data)
+            hex_data = bytes.fromhex(data)
+            self.send_data(hex_data)
             time.sleep(1)  # 每秒发送一组数据
 
     def start(self):
